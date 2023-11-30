@@ -1,0 +1,517 @@
+---
+title: "Homework_Bayesian_networks"
+author: "Nikhileswar mada"
+date: '`r Sys.Date()`'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question 1
+
+### (a)
+
+```{r}
+
+library(gRain)
+library(Rgraphviz)
+library(gRbase)
+library(ggm)
+library(graph)
+library(deal)
+library(bnlearn)
+data("ksl")
+data<-ksl[,1:8]
+head(data)
+```
+```{r}
+unique(data[,c('Hyp')])
+unique(data[,c('Smok')])
+unique(data[,c('Alc')])
+unique(data[,c('Work')])
+unique(data[,c('Sex')])
+```
+
+
+Discretizing the log body Mass Index into two classes because there are only two factors or two integers for all the remaining continuous values
+
+
+```{r}
+vars<-c("FEV","Kol","logBMI")
+data$FEV<-as.numeric(data$FEV)
+data$Kol<-as.numeric(data$Kol)
+data[,vars]<-discretize(data[,vars],method='interval',breaks=2)
+```
+
+Converting the data from int to numeric to create two numeric variables FEV and Kol along with logBMI which was already in numeric.
+Then we applied discretize function in interval of 2 since most other variables have 2 states.
+
+### (b)
+
+```{r}
+data <- as.data.frame(lapply(data, as.factor))
+head(data)
+```
+
+
+Converting all the variables to factors then we are applying hc from bnlearn library function to generate the bayesian network.
+
+
+```{r}
+library(bnlearn)
+model <- hc(data, score = "bic")
+net<-as(amat(model),"graphNEL")
+plot(net)
+
+```
+
+The structure shows that Hyp is the primary parent of all then it's child are logBMI and Smok and no other variable is depended on the logBMI.This is the dag
+
+```{r}
+print(model)
+```
+
+
+
+The model summary is listed above indicating the relationship between each node and the neighbourhood size along with the branching factor.
+
+### (c)
+
+```{r}
+cpdag<-cpdag(model)
+```
+
+
+
+```{r}
+graphviz.plot(cpdag)
+```
+
+This is the cpdag of the bayesian network.
+
+### (d)
+
+```{r}
+dag <- cextend(cpdag, strict = TRUE)
+graphviz.plot(dag)
+```
+All the v-structures were maintained this shows that the dag here is an equivalence of the dag in b.
+
+
+### (e)
+
+```{r}
+fit<-bn.fit(model,data=data)
+fit$FEV
+```
+
+This shows that the smoking alone increases the chance of higher forced ejection volumes.Based on the conditional probability tables shows that 1 level of smoking has 75% lower FEV interval whereas 2 level of smoking shows a 67% lower FEV interval meaning a 8% percent increase in higher level of FEV.
+
+Alcohol doesn't affect the Forced ejection volumes since it has d-seperation between them.
+
+
+### (f)
+
+Since 
+
+```{r}
+junction <- compile(as.grain(fit))
+jsex <- setEvidence(junction, nodes = c("Alc","Hyp"), states = c('2','1'))
+print(querygrain(jsex, nodes = "FEV")$FEV)
+```
+
+
+This shows a lower FEV.
+
+
+### (g)
+
+Let's use a different discretize model hartemink of two instead of interval of two breaks and see the results.
+
+```{r}
+data2<-data(ksl)
+data2<-ksl[,1:8]
+vars<-c("FEV","Kol","logBMI")
+data2$FEV<-as.numeric(data2$FEV)
+data2$Kol<-as.numeric(data2$Kol)
+data2[,vars]<-discretize(data2[,vars],method='hartemink',breaks=2)
+head(data2)
+```
+
+
+
+Let's look at the dag and cpdag 
+
+```{r}
+data2 <- as.data.frame(lapply(data2, as.factor))
+model2 <- hc(data2, score = "bic")
+net2<-as(amat(model2),"graphNEL")
+plot(net2)
+```
+
+
+
+This shows that the FEV is parent of all and doesn't depend upon any factors unlike the previous dag created using interval.Whereas Hyp is a leaf node here whereas earlier it is base parent.
+
+
+Let's look at the cpdag
+
+```{r}
+
+cpdag2<-cpdag(model2)
+graphviz.plot(cpdag2)
+```
+The cpdag of two are quite different and the equivalence classes of one is not going to be the other.
+
+\newpage
+
+# Question 2
+
+
+### (a)
+
+```{r}
+
+marks.dag = empty.graph(nodes = c("MECH", "LAT", "ANL", "VECT", "ALG", "STAT"))
+marks.dag = set.arc(marks.dag, from = "MECH", to = "LAT") 
+marks.dag = set.arc(marks.dag, from = "ANL", to = "LAT") 
+marks.dag = set.arc(marks.dag, from = "LAT", to = "ALG") 
+marks.dag = set.arc(marks.dag, from = "LAT", to = "STAT") 
+marks.dag = set.arc(marks.dag, from = "LAT", to = "VECT")
+
+graphviz.plot(marks.dag)
+```
+
+The dag is created as per the question.
+
+### (b)
+
+Creating the cpdag of the above question.
+
+```{r}
+graphviz.plot(cpdag(marks.dag))
+```
+
+
+
+The cpdag looks the same since changing the directions would cause the dag to create more v-structures.
+
+### (c)
+
+```{r}
+
+hc <- hc(marks)
+graphviz.plot(hc)
+
+```
+
+The most likely structure need not be a DAG meaning a directed acyclic graph where our hc structure has cyclic structures.
+
+LAT variable was removed from the structure.
+
+\newpage
+
+# Question 3
+
+## a)
+
+```{r}
+library(gRbase)
+library(rbmn)
+data(carcass)
+head(carcass)
+
+carcass$Fat11<-as.numeric(carcass$Fat11)
+carcass$Meat11<-as.numeric(carcass$Meat11)
+carcass$Fat12<-as.numeric(carcass$Fat12)
+carcass$Meat12<-as.numeric(carcass$Meat12)
+carcass$Fat13<-as.numeric(carcass$Fat13)
+carcass$Meat13<-as.numeric(carcass$Meat13)
+
+# Set the variable Lean Meat to be at the bottom of the network.
+nodes <- names(carcass)
+nodes <- nodes[nodes != "LeanMeat"]
+nodes <- append(nodes, "LeanMeat")
+
+#carcass <- as.data.frame(lapply(carcass, as.factor))
+
+head(carcass)
+
+
+bl<-matrix(c("LeanMeat", "Fat12", "LeanMeat", "Fat13"), ncol = 2, byrow = TRUE)
+bn.hc <- hc(carcass[, nodes],score='bic-g',blacklist=bl)
+
+graphviz.plot(bn.hc)
+```
+
+Here the leanMeat is the leaf node and at the bottom of the network.
+
+Taking the model and converting to bayesian network using modelstring developed from
+
+```{r}
+bn.hc
+```
+
+```{r}
+ans<-model2network("[Fat11][Meat11][Fat12|Fat11][Meat12|Meat11][Fat13|Fat11:Meat11:Fat12][Meat13|Fat11:Meat11:Fat12:Meat12][LeanMeat|Fat11:Meat11:Fat12:Fat13]")
+
+bn.learn<-bn.fit(ans,data=carcass)
+graphviz.plot(bn.learn)
+```
+
+### (b)
+
+Based on the conditional independence test using iamb
+
+```{r}
+ans<-rbn(bn.learn,n=10000)
+str<-iamb(ans,test="cor",blacklist=bl)
+graphviz.plot(str)
+```
+
+
+## c)
+
+The networks are only similar in terms of bottom of the network which is LeanMeat and Fat11 being at the top rest are jumbled across the networks.
+The number of v-structures differed.
+
+## d)
+
+```{r}
+ans4<-rbn(bn.learn,n=25)
+str4<-iamb(ans4,test="cor")
+graphviz.plot(str4)
+```
+
+
+The network could not form completely due to low sample size and most are undirected edges.This clearly very different from a and b.
+
+## e)
+
+```{r}
+ans5<-rbn(bn.learn,n=100)
+str5<-iamb(ans5,test="cor")
+graphviz.plot(str5)
+```
+
+This clearly got better than the 25 samples but the directions hasn't formed yet and few more samples this would be complete.
+
+\newpage
+
+# Question 4
+
+```{r}
+dag <- empty.graph(nodes = c('BirthAsphyxia', 'Disease', 'Age', 'LVH',
+'DuctFlow', 'CardiacMixing', 'LungParench', 'LungFlow', 'Sick', 'HypDistrib', 'HypoxiaInO2', 'CO2','ChestXray', 'Grunting', 'LVHreport', 'LowerBodyO2', 'RUQO2', 'CO2Report', 'XrayReport', 'GruntingReport'))
+dag <- set.arc(dag, from = 'BirthAsphyxia', to = 'Disease') 
+dag <- set.arc(dag, from = 'Disease', to = 'Age')
+dag <- set.arc(dag, from = 'Disease', to = 'LVH')
+dag <- set.arc(dag, from = 'Disease', to = 'DuctFlow')
+dag <- set.arc(dag, from = 'Disease', to = 'CardiacMixing') 
+dag <- set.arc(dag, from = 'Disease', to = 'LungParench') 
+dag <- set.arc(dag, from = 'Disease', to = 'LungFlow')
+dag <- set.arc(dag, from = 'Disease', to = 'Sick')
+dag <- set.arc(dag, from = 'LVH', to = 'LVHreport')
+dag <- set.arc(dag, from = 'DuctFlow', to = 'HypDistrib')
+dag <- set.arc(dag, from = 'CardiacMixing', to = 'HypDistrib') 
+dag <- set.arc(dag, from = 'CardiacMixing', to = 'HypoxiaInO2') 
+dag <- set.arc(dag, from = 'LungParench', to = 'HypoxiaInO2') 
+dag <- set.arc(dag, from = 'LungParench', to = 'CO2')
+dag <- set.arc(dag, from = 'LungParench', to = 'ChestXray')
+dag <- set.arc(dag, from = 'LungParench', to = 'Grunting')
+dag <- set.arc(dag, from = 'LungFlow', to = 'ChestXray')
+dag <- set.arc(dag, from = 'Sick', to = 'Grunting')
+dag <- set.arc(dag,from = "Sick",to="Age")
+dag <- set.arc(dag, from = 'HypDistrib', to = 'LowerBodyO2') 
+dag <- set.arc(dag, from = 'HypoxiaInO2', to = 'LowerBodyO2') 
+dag <- set.arc(dag, from = 'HypoxiaInO2', to = 'RUQO2')
+dag <- set.arc(dag, from = 'CO2', to = 'CO2Report')
+dag <- set.arc(dag, from = 'ChestXray', to = 'XrayReport') 
+dag <- set.arc(dag, from = 'Grunting', to = 'GruntingReport')
+graphviz.plot(dag)
+
+```
+
+
+```{r}
+dag
+```
+
+
+
+This contains the joint distribution of the dag model inside the model in the form of the modelstring which is 
+
+   [BirthAsphyxia][Disease|BirthAsphyxia][LVH|Disease][DuctFlow|Disease]
+   [CardiacMixing|Disease][LungParench|Disease][LungFlow|Disease][Sick|Disease]
+   [Age|Disease:Sick][HypDistrib|DuctFlow:CardiacMixing]
+   [HypoxiaInO2|CardiacMixing:LungParench][CO2|LungParench]
+   [ChestXray|LungParench:LungFlow][Grunting|LungParench:Sick][LVHreport|LVH]
+   [LowerBodyO2|HypDistrib:HypoxiaInO2][RUQO2|HypoxiaInO2][CO2Report|CO2]
+   [XrayReport|ChestXray][GruntingReport|Grunting]
+   
+   
+### (b)   
+   
+```{r}
+
+graphviz.plot(moral(dag))
+```
+
+### (c)
+
+parameterized using the bn.fit and the method used is maximum likelihood estimate.
+
+
+```{r}
+child<- read.csv("child_network.csv", header=TRUE, colClasses="factor") 
+bn.mle <- bn.fit(dag, data = child, method = "mle")
+```
+
+### (d)
+
+n13 is the chest X Ray parameter.
+
+The CPT is given as 
+
+```{r}
+bn.mle$ChestXray
+```
+
+
+### (e)
+
+n14 is grunting
+
+The CPT of grunting is as follows:
+
+```{r}
+bn.mle$Grunting
+```
+
+
+###(f)
+
+Given lowerbodyO2<5 and xray report to be plethoric then based on this we are trying to determine the disease this caused.
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'Fallot'), evidence = ((LowerBodyO2 == '<5' & XrayReport == 'Plethoric')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'Lung'), evidence = ((LowerBodyO2 == '<5' & XrayReport == 'Plethoric')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'PAIVS'), evidence = ((LowerBodyO2 == '<5' & XrayReport == 'Plethoric')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'PFC'), evidence = ((LowerBodyO2 == '<5' & XrayReport == 'Plethoric')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'TAPVD'), evidence = ((LowerBodyO2 == '<5' & XrayReport == 'Plethoric')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'TGA'), evidence = ((LowerBodyO2 == '<5' & XrayReport == 'Plethoric')))
+```
+
+Based on the queries of diseases and the given evidence it is evident that the TGA causes lowerbodyo2 and xrayreport to be plethoric.
+
+
+### (G)
+
+given the lowerbodyo2<5 nd x-ray report to be oligaemic.
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'Fallot'), evidence = ((LowerBodyO2 == '<5') & (XrayReport == 'Oligaemic') & (Grunting == 'no'))) 
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'Lung'), evidence = ((LowerBodyO2 == '<5') & (XrayReport == 'Oligaemic') & (Grunting == 'no'))) 
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'PAIVS'), evidence = ((LowerBodyO2 == '<5') & (XrayReport == 'Oligaemic') & (Grunting == 'no'))) 
+```
+
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'PFC'), evidence = ((LowerBodyO2 == '<5') & (XrayReport == 'Oligaemic') & (Grunting == 'no')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'TAPVD'), evidence = ((LowerBodyO2 == '<5') & (XrayReport == 'Oligaemic') & (Grunting == 'no'))) 
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'TGA'), evidence = ((LowerBodyO2 == '<5') & (XrayReport == 'Oligaemic') & (Grunting == 'no')))
+```
+
+There are two close likely diseases with Fallot being 45% and paivs being 35% 
+
+### (h)
+
+
+Baby julie is grunting with mild cardiac mixing.The disease is 
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'Fallot'), evidence = ((Grunting == 'yes') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'Lung'), evidence = ((Grunting == 'yes') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'PAIVS'), evidence = ((Grunting == 'yes') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'PFC'), evidence = ((Grunting == 'yes') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'TAPVD'), evidence = ((Grunting == 'yes') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'TGA'), evidence = ((Grunting == 'yes') & (CardiacMixing == 'Mild')))
+```
+
+
+Baby julie has the lung disease with 45% chance and others are shared between TGA,PFC and fallot.
+
+
+Baby george is not grunting and with cardiacMixing.
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'Fallot'), evidence = ((Grunting == 'no') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'Lung'), evidence = ((Grunting == 'no') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'PAIVS'), evidence = ((Grunting == 'no') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'PFC'), evidence = ((Grunting == 'no') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'TAPVD'), evidence = ((Grunting == 'no') & (CardiacMixing == 'Mild')))
+```
+
+```{r}
+cpquery(bn.mle, event = (Disease == 'TGA'), evidence = ((Grunting == 'no') & (CardiacMixing == 'Mild')))
+```
+
+Baby julie has mostly at risk since baby george has 40% chance of contracting a most likely disease whereas julie has 45% chance of contracting a most likely disease.
+
+
